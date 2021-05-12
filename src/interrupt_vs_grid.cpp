@@ -40,8 +40,8 @@ int main(void)
 	printf("Connect to Mysql sucess!!\n");
 	mysql_set_character_set(mysql_con, "utf8");
 
-    // get count = 3 of interrupt group 
-    snprintf(sql_buffer, sizeof(sql_buffer), "SELECT count(*) AS numcols FROM load_list WHERE group_id=1 && number>=3 && number<6 ");
+	// get count = 12 of interrupt group 
+	snprintf(sql_buffer, sizeof(sql_buffer), "SELECT count(*) AS numcols FROM load_list WHERE group_id=1 && number>=1 && number<=12 ");
 	interrupt_num = turn_value_to_int(0);
 	printf("interruptable app num:%d\n", interrupt_num);
 
@@ -49,12 +49,12 @@ int main(void)
 	Pgrid_max = turn_value_to_float(0);
 	printf("Pgrid_max:%.2f\n", Pgrid_max);
 
-    app_count = interrupt_num;  // 3
+	app_count = interrupt_num;  // 12
 	variable = app_count + 1;  // 買電狀態
 	int *position = new int[app_count];
 	float **INT_power = NEW2D(interrupt_num, 4, float);
 
-    for (i = 1; i < interrupt_num + 1; i++) {
+	for (i = 1; i < interrupt_num + 1; i++) {
 
 		snprintf(sql_buffer, sizeof(sql_buffer), "SELECT start_time, end_time, operation_time, power1 FROM load_list WHERE group_id = 1 ORDER BY number ASC LIMIT %d,1", i + 1);
 		fetch_row_value();
@@ -62,16 +62,16 @@ int main(void)
 		{INT_power[i - 1][j] = turn_float(j);}
 
 	}
-	
+
 	float *price = new float[24];
-    int *interrupt_start = new int[interrupt_num];
+	int *interrupt_start = new int[interrupt_num];
 	int *interrupt_end = new int[interrupt_num];
 	int *interrupt_ot = new int[interrupt_num];
 	int *interrupt_reot = new int[interrupt_num];
 	float *interrupt_p = new float[interrupt_num];
 
-    // initialize INT_power[interrupt num][4] = 0
-    for (i = 0; i < interrupt_num; i++) {
+	// initialize INT_power[interrupt num][4] = 0
+	for (i = 0; i < interrupt_num; i++) {
 
 		interrupt_start[i] = 0;
 		interrupt_end[i] = 0;
@@ -80,9 +80,9 @@ int main(void)
 		interrupt_p[i] = 0.0;
 
 	}
-    // interrupt load array: INT_power[interrupt num][4] 
+	// interrupt load array: INT_power[interrupt num][4] 
 	printf("interrupt multi array: \n");
-    for (i = 0; i < interrupt_num; i++)	{
+	for (i = 0; i < interrupt_num; i++)	{
 
 		interrupt_start[i] = ((int)(INT_power[i][0] * divide));
 		interrupt_end[i] = ((int)(INT_power[i][1] * divide)) - 1;
@@ -90,10 +90,10 @@ int main(void)
 		interrupt_p[i] = INT_power[i][3];
 		cout<<interrupt_start[i]<<"\t"<<interrupt_end[i]<<"\t"<<interrupt_ot[i]<<"\t"<<interrupt_p[i]<<"\n";
 
-	
-    }
-    // price
-    for (i = 1; i < 25; i++) {
+
+	}
+	// price
+	for (i = 1; i < 25; i++) {
 
 		snprintf(sql_buffer, sizeof(sql_buffer), "SELECT price_value FROM price WHERE price_period = %d", i - 1);
 		// fetch_row_value();
@@ -119,7 +119,7 @@ int main(void)
 
 	snprintf(sql_buffer, sizeof(sql_buffer), "SELECT value FROM LP_BASE_PARM WHERE parameter_id = 28 ");
 	sample_time = turn_value_to_int(0);
-	
+
 	cout<< "real time "<< real_time << "\t sample time "<< sample_time << endl;
 
 	if (real_time == 0)
@@ -143,8 +143,8 @@ int main(void)
 	snprintf(sql_buffer, sizeof(sql_buffer), "SELECT value FROM LP_BASE_PARM WHERE parameter_id = 28 ");
 	sample_time = turn_value_to_int(0);
 
-    GLPK(interrupt_start, interrupt_end, interrupt_ot, interrupt_reot, interrupt_p, app_count, price, position);
-	
+	GLPK(interrupt_start, interrupt_end, interrupt_ot, interrupt_reot, interrupt_p, app_count, price, position);
+
 	sample_time++;
 	printf("\nupdate time block to %d\n",sample_time);
 	snprintf(sql_buffer, sizeof(sql_buffer), "UPDATE LP_BASE_PARM set value = %d where parameter_id= 28", sample_time);
@@ -216,7 +216,7 @@ void GLPK(int *interrupt_start, int *interrupt_end, int *interrupt_ot, int *inte
 			interrupt_reot[i] = 0;
 		}
 	}
- 
+
 	float *s = new float[time_block];
 	/*============================ 總規劃功率矩陣(Total planning power matrix) ====================================*/
 	float **power1 = NEW2D((((time_block - sample_time) * 1) + app_count), (variable * (time_block - sample_time)), float);
@@ -301,7 +301,7 @@ void GLPK(int *interrupt_start, int *interrupt_end, int *interrupt_ot, int *inte
 			}
 		}
 	}
-	
+
 	/*============================== 宣告限制式條件範圍(row) ===============================*/
 	// GLPK讀列從1開始
 	// 限制式-家庭負載最低耗能
@@ -317,7 +317,7 @@ void GLPK(int *interrupt_start, int *interrupt_end, int *interrupt_ot, int *inte
 		glp_set_row_name(mip, (app_count + i), "");
 		glp_set_row_bnds(mip, (app_count + i), GLP_UP, 0.0, 0.0);
 	}
-	
+
 	/*============================== 宣告決策變數(column) ================================*/
 	for (i = 0; i < (time_block - sample_time); i++)
 	{
@@ -329,7 +329,7 @@ void GLPK(int *interrupt_start, int *interrupt_end, int *interrupt_ot, int *inte
 		glp_set_col_bnds(mip, ((app_count + 1) + i*variable), GLP_DB, 0.0, Pgrid_max);	// 決定市電輸出功率  一定要大於總負載功率才不會有太大問題
 		glp_set_col_kind(mip, ((app_count + 1) + i*variable), GLP_CV);
 	}
-	
+
 
 	/*============================== 宣告目標式參數(column) ===============================*/
 	for (j = 0; j < (time_block - sample_time); j++)
@@ -354,7 +354,7 @@ void GLPK(int *interrupt_start, int *interrupt_end, int *interrupt_ot, int *inte
 	glp_iocp parm;
 	glp_init_iocp(&parm);
 	parm.tm_lim = 100000;
-        
+
 	parm.presolve = GLP_ON;
 	parm.gmi_cuts = GLP_ON;
 	parm.fp_heur = GLP_ON;
@@ -400,7 +400,7 @@ void GLPK(int *interrupt_start, int *interrupt_end, int *interrupt_ot, int *inte
 			}
 
 			snprintf(sql_buffer, sizeof(sql_buffer), "INSERT INTO control_status (%s, equip_id) VALUES('%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%d');"
-				, column, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[10], s[11], s[12], s[13], s[14], s[15], s[16], s[17], s[18], s[19], s[20], s[21], s[22], s[23], s[24], s[25], s[26], s[27], s[28], s[29], s[30], s[31], s[32], s[33], s[34], s[35], s[36], s[37], s[38], s[39], s[40], s[41], s[42], s[43], s[44], s[45], s[46], s[47], s[48], s[49], s[50], s[51], s[52], s[53], s[54], s[55], s[56], s[57], s[58], s[59], s[60], s[61], s[62], s[63], s[64], s[65], s[66], s[67], s[68], s[69], s[70], s[71], s[72], s[73], s[74], s[75], s[76], s[77], s[78], s[79], s[80], s[81], s[82], s[83], s[84], s[85], s[86], s[87], s[88], s[89], s[90], s[91], s[92], s[93], s[94], s[95], i);
+					, column, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[10], s[11], s[12], s[13], s[14], s[15], s[16], s[17], s[18], s[19], s[20], s[21], s[22], s[23], s[24], s[25], s[26], s[27], s[28], s[29], s[30], s[31], s[32], s[33], s[34], s[35], s[36], s[37], s[38], s[39], s[40], s[41], s[42], s[43], s[44], s[45], s[46], s[47], s[48], s[49], s[50], s[51], s[52], s[53], s[54], s[55], s[56], s[57], s[58], s[59], s[60], s[61], s[62], s[63], s[64], s[65], s[66], s[67], s[68], s[69], s[70], s[71], s[72], s[73], s[74], s[75], s[76], s[77], s[78], s[79], s[80], s[81], s[82], s[83], s[84], s[85], s[86], s[87], s[88], s[89], s[90], s[91], s[92], s[93], s[94], s[95], i);
 			mysql_query(mysql_con, sql_buffer);
 			memset(sql_buffer, 0, sizeof(sql_buffer));
 			printf("%d,", i);
@@ -431,15 +431,15 @@ void GLPK(int *interrupt_start, int *interrupt_end, int *interrupt_ot, int *inte
 				// l = (l + variable);
 				h = (h + variable);
 			}
-			
+
 			snprintf(sql_buffer, sizeof(sql_buffer), "UPDATE control_status set A0 = '%.3f', A1 = '%.3f', A2 = '%.3f', A3 = '%.3f', A4 = '%.3f', A5 = '%.3f', A6 = '%.3f', A7 = '%.3f', A8 = '%.3f', A9 = '%.3f', A10 = '%.3f', A11 = '%.3f', A12 = '%.3f', A13 = '%.3f', A14 = '%.3f', A15 = '%.3f', A16 = '%.3f', A17 = '%.3f', A18 = '%.3f', A19 = '%.3f', A20 = '%.3f', A21 = '%.3f', A22 = '%.3f', A23 = '%.3f', A24 = '%.3f', A25 = '%.3f', A26 = '%.3f', A27 = '%.3f', A28 = '%.3f', A29 = '%.3f', A30 = '%.3f', A31 = '%.3f', A32 = '%.3f', A33 = '%.3f', A34 = '%.3f', A35 = '%.3f', A36 = '%.3f', A37 = '%.3f', A38 = '%.3f', A39 = '%.3f', A40 = '%.3f', A41 = '%.3f', A42 = '%.3f', A43 = '%.3f', A44 = '%.3f', A45 = '%.3f', A46 = '%.3f', A47 = '%.3f', A48 = '%.3f', A49 = '%.3f', A50 = '%.3f', A51 = '%.3f', A52 = '%.3f', A53 = '%.3f', A54 = '%.3f', A55 = '%.3f', A56 = '%.3f', A57 = '%.3f', A58 = '%.3f', A59 = '%.3f', A60 = '%.3f', A61 = '%.3f', A62 = '%.3f', A63 = '%.3f', A64 = '%.3f', A65 = '%.3f', A66 = '%.3f', A67 = '%.3f', A68 = '%.3f', A69 = '%.3f', A70 = '%.3f', A71 = '%.3f', A72 = '%.3f', A73 = '%.3f', A74 = '%.3f', A75 = '%.3f', A76 = '%.3f', A77 = '%.3f', A78 = '%.3f', A79 = '%.3f', A80 = '%.3f', A81 = '%.3f', A82 = '%.3f', A83 = '%.3f', A84 = '%.3f', A85 = '%.3f', A86 = '%.3f', A87 = '%.3f', A88 = '%.3f', A89 = '%.3f', A90 = '%.3f', A91 = '%.3f', A92 = '%.3f', A93 = '%.3f', A94 = '%.3f', A95 = '%.3f' WHERE equip_id = '%d';", s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[10], s[11], s[12], s[13], s[14], s[15], s[16], s[17], s[18], s[19], s[20], s[21], s[22], s[23], s[24], s[25], s[26], s[27], s[28], s[29], s[30], s[31], s[32], s[33], s[34], s[35], s[36], s[37], s[38], s[39], s[40], s[41], s[42], s[43], s[44], s[45], s[46], s[47], s[48], s[49], s[50], s[51], s[52], s[53], s[54], s[55], s[56], s[57], s[58], s[59], s[60], s[61], s[62], s[63], s[64], s[65], s[66], s[67], s[68], s[69], s[70], s[71], s[72], s[73], s[74], s[75], s[76], s[77], s[78], s[79], s[80], s[81], s[82], s[83], s[84], s[85], s[86], s[87], s[88], s[89], s[90], s[91], s[92], s[93], s[94], s[95], i);
 			mysql_query(mysql_con, sql_buffer);
 			memset(sql_buffer, 0, sizeof(sql_buffer));
-			
+
 			for (j = 0; j < sample_time; j++) { s[j] = 0; }
 
 			snprintf(sql_buffer, sizeof(sql_buffer), "INSERT INTO real_status (%s, equip_id) VALUES('%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%.3f','%d');"
-				, column, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[10], s[11], s[12], s[13], s[14], s[15], s[16], s[17], s[18], s[19], s[20], s[21], s[22], s[23], s[24], s[25], s[26], s[27], s[28], s[29], s[30], s[31], s[32], s[33], s[34], s[35], s[36], s[37], s[38], s[39], s[40], s[41], s[42], s[43], s[44], s[45], s[46], s[47], s[48], s[49], s[50], s[51], s[52], s[53], s[54], s[55], s[56], s[57], s[58], s[59], s[60], s[61], s[62], s[63], s[64], s[65], s[66], s[67], s[68], s[69], s[70], s[71], s[72], s[73], s[74], s[75], s[76], s[77], s[78], s[79], s[80], s[81], s[82], s[83], s[84], s[85], s[86], s[87], s[88], s[89], s[90], s[91], s[92], s[93], s[94], s[95], i);
+					, column, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[10], s[11], s[12], s[13], s[14], s[15], s[16], s[17], s[18], s[19], s[20], s[21], s[22], s[23], s[24], s[25], s[26], s[27], s[28], s[29], s[30], s[31], s[32], s[33], s[34], s[35], s[36], s[37], s[38], s[39], s[40], s[41], s[42], s[43], s[44], s[45], s[46], s[47], s[48], s[49], s[50], s[51], s[52], s[53], s[54], s[55], s[56], s[57], s[58], s[59], s[60], s[61], s[62], s[63], s[64], s[65], s[66], s[67], s[68], s[69], s[70], s[71], s[72], s[73], s[74], s[75], s[76], s[77], s[78], s[79], s[80], s[81], s[82], s[83], s[84], s[85], s[86], s[87], s[88], s[89], s[90], s[91], s[92], s[93], s[94], s[95], i);
 			mysql_query(mysql_con, sql_buffer);
 			memset(sql_buffer, 0, sizeof(sql_buffer));
 
@@ -478,7 +478,7 @@ void *new2d(int h, int w, int size)
 // }
 
 // float turn_value_to_float(int col_num) {
-	
+
 // 	mysql_row = fetch_row_value();
 // 	float result = atof(mysql_row[col_num]);
 // 	return result;
