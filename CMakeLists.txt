@@ -18,7 +18,7 @@ include_directories(
 link_directories(${LIBMYSQLCLIENT_LIBRARY_DIRS})
 
 # add the executable
-add_executable(interrupt_vs_grid src/interrupt_vs_grid.cpp src/SQLFunction.cpp src/new2D.cpp)
+add_executable(interrupt_vs_grid src/interrupt_vs_grid.cpp src/SQLFunction.cpp )
 target_link_libraries(interrupt_vs_grid 
     ${LIBMYSQLCLIENT_LIBRARIES} 
     /home/hems/glpk-4.65-built/src/.libs/libglpk.a
